@@ -1,0 +1,18 @@
+0 - n: length(data)
+n+1 - data
+data = {
+	'success': boolean,
+	'request': 'send'/'check',
+	'data': {
+		'start_x': float,
+		'start_y': float,
+		'end_x': float,
+		'end_y': float,
+		'rgba': {
+			'red': int,
+			'green': int,
+			'black': int,
+			'alpha': float,
+		},
+	}
+}
