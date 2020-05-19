@@ -1,10 +1,10 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QThread
 
-import socket
+from client.utils import *
+
 import datetime
 import time
-import json
 
 class checkConnectionThread(QThread):
 	connectionStatusSignal = QtCore.pyqtSignal(bool)
@@ -20,21 +20,23 @@ class checkConnectionThread(QThread):
 			'success': True,
 			'request': 'check',
 		}
-		binDataJSON = json.dumps(dataJSON).encode('UTF-8')
-		binData = bytes([len(binDataJSON)]) + binDataJSON
+
+		binData = getBinaryJson(dataJSON)
 
 		while True:
 			try:
 				self.clientSocket.sendall(binData)
-				msg = '[{}] {}'.format(datetime.datetime.now().time(), dataJSON)
+				msg = '[{}] {} to {}'.format(datetime.datetime.now().time(), dataJSON['request'], self.servAddr)
+				self.logger.debug(msg)
 
 			except (ConnectionResetError, BrokenPipeError) as e:
 				self.connectionStatusSignal.emit(False)
-				msg = '[{}] connection to {} lost'.format(datetime.datetime.now().time(), self.servAddr)
+				msg = '[{}] {} to {} failed'.format(datetime.datetime.now().time(), dataJSON['request'], self.servAddr)
+				self.logger.error(msg)
 
 			except Exception as e:
 				msg = '[{}] {}'.format(datetime.datetime.now().time(), e)
+				self.logger.error(msg)
 
-			self.logger.debug(msg)
 			print(msg)
 			time.sleep(3)

@@ -1,18 +1,26 @@
 0 - n: length(data)
-n+1 - data
+n+1 - ...: data
 data = {
 	'success': boolean,
-	'request': 'send'/'check',
-	'data': {
-		'start_x': float,
-		'start_y': float,
-		'end_x': float,
-		'end_y': float,
-		'rgba': {
-			'red': int,
-			'green': int,
-			'black': int,
-			'alpha': float,
-		},
-	}
+	'request': 'send'/'check'/'answer',
+	if 'send': 
+		'data': {
+			'start_x': float,
+			'start_y': float,
+			'end_x': float,
+			'end_y': float,
+			'width': float,
+			'rgba': {
+				'red': int,
+				'green': int,
+				'blue': int,
+				'alpha': int,
+			},
+		}
+	if 'answer':
+		'data': {
+			'author': string,
+			'answer': string,
+		}
+
 }

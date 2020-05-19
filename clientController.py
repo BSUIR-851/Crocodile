@@ -3,13 +3,10 @@ from PyQt5.QtCore import QThread
 from clientView import Ui_Form
 from colorpicker import colorPickerWidget
 
-import threading
+from client.client import clientThread
+
 import sys
 import socket
-import struct
-import datetime
-import time
-import logging
 import cfg
 
 #Create application
@@ -23,21 +20,24 @@ Form.show()
 
 #Hook logic
 class sceneDraw(QtWidgets.QGraphicsScene):
-
-	def __init__(self, thickness, hostName, portNum):
+	def __init__(self, thickness, host):
 		super().__init__()
 		self.isPressedLeftMouse = False
+
 		self.penThickness = thickness
 		self.pen = QtGui.QPen(QtCore.Qt.black, self.penThickness)
 		self.pen.setCapStyle(QtCore.Qt.RoundCap)
 		self.pen.setJoinStyle(QtCore.Qt.MiterJoin)
-		self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.hostName = hostName
-		self.portNum = portNum
+
+		self.hostName = host[0]
+		self.portNum = host[1]
 		self.servAddr = (self.hostName, self.portNum)
+
 		self.penColor = object
 		self.exampleScene = object
 		self.examplePen = object
+
+		self.sceneClient = object
 
 
 	def drawEllipse(self, x, y, w, h):
@@ -56,7 +56,7 @@ class sceneDraw(QtWidgets.QGraphicsScene):
 			self.pEndX, self.pEndY = self.pStartX, self.pStartY
 
 			line = [self.pStartX, self.pStartY, self.pEndX, self.pEndY]
-			self.sendData(line)
+			self.sceneClient.sendData(line)
 
 			self.addLine(self.pStartX, self.pStartY, self.pEndX + eps, self.pEndY + eps, self.pen)
 		#	self.drawEllipse(self.pStartX, self.pStartY, self.penThickness, self.penThickness)
@@ -66,7 +66,7 @@ class sceneDraw(QtWidgets.QGraphicsScene):
 			self.pEndX, self.pEndY = event.scenePos().x(), event.scenePos().y()
 
 			line = [self.pStartX, self.pStartY, self.pEndX, self.pEndY]
-			self.sendData(line)
+			self.sceneClient.sendData(line)
 
 			self.addLine(self.pStartX, self.pStartY, self.pEndX, self.pEndY, self.pen)
 
@@ -87,19 +87,30 @@ def vsThickness_onValueChanged(scene, value):
 	scene.exampleScene.clear()
 	scene.exampleScene.addLine(0, 0, 0 + eps, 0 + eps, scene.examplePen)
 
-@QtCore.pyqtSlot(list, object, int, int)
-def drawLine(data, scene, thick, rgb):
-	# lastThick = scene.pen.width()
-	scene.pen.setWidth(thick)
-	lastRgb = scene.penColor.rgb()
+@QtCore.pyqtSlot(list, object, dict)
+def drawLine(scene, data):
+	lastData = {
+		'width': scene.pen.width(),
+		'red': scene.penColor.red(),
+		'green': scene.penColor.green(),
+		'blue': scene.penColor.blue(),
+		'alpha': scene.penColor.alpha(),
+	}
+	scene.pen.setWidth(data['width'])
 
-	scene.penColor.setRgb(rgb + 2**32)
+	scene.penColor.setRed(data['rgba']['red'])
+	scene.penColor.setGreen(data['rgba']['green'])
+	scene.penColor.setBlue(data['rgba']['blue'])
+	scene.penColor.setAlpha(data['rgba']['alpha'])
 	scene.pen.setColor(scene.penColor)
 	eps = 0.00000001
-	scene.addLine(data[0], data[1], data[2] + eps, data[3] + eps, scene.pen)
+	scene.addLine(data['start_x'], data['start_y'], data['end_x'] + eps, data['end_y'] + eps, scene.pen)
 
-	scene.pen.setWidth(scene.penThickness)
-	scene.penColor.setRgb(lastRgb)
+	scene.pen.setWidth(lastData['width'])
+	scene.penColor.setRed(lastData['red'])
+	scene.penColor.setGreen(lastData['green'])
+	scene.penColor.setBlue(lastData['blue'])
+	scene.penColor.setAlpha(lastData['alpha'])
 	scene.pen.setColor(scene.penColor)
 
 @QtCore.pyqtSlot(object, object, bool)
@@ -113,7 +124,7 @@ def changeConnectionStatus(image, text, status):
 
 
 def boardSetting(addr):
-	scene = sceneDraw(ui.vsThickness.value(), addr[0], addr[1])
+	scene = sceneDraw(ui.vsThickness.value(), addr)
 	ui.gvBoard.setScene(scene)
 	scene.setSceneRect(0, 0, ui.gvBoard.width()-5, ui.gvBoard.height()-5)
 	return scene
@@ -181,12 +192,12 @@ def main():
 	ui.vsThickness.valueChanged.connect(lambda: vsThickness_onValueChanged(scene, ui.vsThickness.value()))
 	ui.pbClear.clicked.connect(pbClear_onClick)
 
-	client = clientThread(scene, scene.clientSocket, ui.lbConnectionImage, ui.lbConnectionStatus, addr[0], addr[1])
+	client = clientThread(scene, ui.lbConnectionImage, ui.lbConnectionStatus, addr)
 	client.progressSignal.connect(drawLine)
 	client.connectionImageSignal.connect(changeConnectionStatus)
+	scene.sceneClient = client
 	client.start()
 	client.wait(1)
-
 
 	sys.exit(app.exec_())
 
