@@ -11,6 +11,14 @@ import datetime
 class clientThread(QThread):
 	progressSignal = QtCore.pyqtSignal(object, dict)
 	connectionImageSignal = QtCore.pyqtSignal(object, object, bool)
+	clearSignal = QtCore.pyqtSignal(object)
+	amountOfPlayersSignal = QtCore.pyqtSignal(int)
+	recvStartSignal = QtCore.pyqtSignal(dict)
+	recvFinishSignal = QtCore.pyqtSignal()
+	drawerSignal = QtCore.pyqtSignal(dict)
+
+	nickname = ''
+	isStart = False
 
 	def __init__(self, scene, connectionImage, connectionText, servAddr):
 		super().__init__()
@@ -42,10 +50,21 @@ class clientThread(QThread):
 			except OSError:
 				continue
 
+		self.clientSocket.settimeout(5)
+
+		dataJSON = {
+			'success': True,
+			'request': 'nickname',
+			'data': self.nickname,
+		}
+
+		self.sendAnotherData(dataJSON)
+
 
 	def startRecvData(self):
 		try:
 			self.clientSocket.connect(self.servAddr)
+			self.clientSocket.settimeout(5)
 		except (OSError, socket.timeout, TimeoutError, ConnectionRefusedError) as e:
 			self.resetConnection()
 
@@ -55,19 +74,39 @@ class clientThread(QThread):
 		while True:
 			try:
 				binData = read(self.clientSocket)
-				dataJSON = getJson(binData)
+				if binData:
+					dataJSON = getJson(binData)
 
-				if dataJSON['success']:
-					if dataJSON['request'] == 'check':
-						self.connectionImageSignal.emit(self.connectionImage, self.connectionText, True)
-						msg = '[{}] {} to {} confirmed'.format(datetime.datetime.now().time(), dataJSON['request'], self.servAddr)
+					if dataJSON['success']:
+						if dataJSON['request'] == 'check':
+							self.connectionImageSignal.emit(self.connectionImage, self.connectionText, True)
+							self.amountOfPlayersSignal.emit(dataJSON['amount_of_connected'])
+							msg = '[{}] {} to {} confirmed'.format(datetime.datetime.now().time(), dataJSON['request'], self.servAddr)
 
-					elif dataJSON['request'] == 'send':
-						msg = '[{}] {}'.format(datetime.datetime.now().time(), dataJSON['data'])
-						self.progressSignal.emit(self.scene, dataJSON['data'])
+						elif dataJSON['request'] == 'send':
+							msg = '[{}] {}'.format(datetime.datetime.now().time(), dataJSON['data'])
+							self.progressSignal.emit(self.scene, dataJSON['data'])
 
-					self.logger.debug(msg)
-					print(msg)
+						elif dataJSON['request'] == 'clear':
+							msg = '[{}] {}'.format(datetime.datetime.now().time(), dataJSON['data'])
+							self.clearSignal.emit(self.scene)
+
+						elif dataJSON['request'] == 'start':
+							msg = '[{}] start: {}'.format(datetime.datetime.now().time(), dataJSON['data'])
+							self.recvStartSignal.emit(dataJSON['data'])
+
+						elif dataJSON['request'] == 'finish':
+							msg = '[{}] finish: {}'.format(datetime.datetime.now().time(), dataJSON['data'])
+							self.recvFinishSignal.emit()
+
+						elif dataJSON['request'] == 'drawer':
+							msg = '[{}] drawer: {}'.format(datetime.datetime.now().time(), dataJSON['data'])
+							self.drawerSignal.emit(dataJSON['data'])
+
+						self.logger.debug(msg)
+						print(msg)
+				else:
+					self.resetConnection()
 
 			except (OSError, socket.timeout, TimeoutError, ConnectionRefusedError) as e:
 				self.resetConnection()
@@ -95,6 +134,23 @@ class clientThread(QThread):
 					},
 				},
 			}
+			binData = getBinaryJson(dataJSON)
+
+			self.clientSocket.sendall(binData)
+			msg = '[{}] send to {}: {}'.format(datetime.datetime.now().time(), self.servAddr, dataJSON['data'])
+			self.logger.debug(msg)
+			print(msg)
+
+		except (socket.timeout, TimeoutError, ConnectionRefusedError) as e:
+			self.resetConnection()
+
+		except Exception as e:
+			msg = '[{}] {}'.format(datetime.datetime.now().time(), e)
+			self.logger.error(msg)
+			print(msg)
+
+	def sendAnotherData(self, dataJSON):
+		try:
 			binData = getBinaryJson(dataJSON)
 
 			self.clientSocket.sendall(binData)

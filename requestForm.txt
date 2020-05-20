@@ -2,7 +2,9 @@
 n+1 - ...: data
 data = {
 	'success': boolean,
-	'request': 'send'/'check'/'answer',
+	'request': 1 of ['send', 'check', 'nickname', 'clear', 'answer', 'drawer', 'finish', 'start'],
+	if 'check':
+		'amount_of_connected': int,
 	if 'send': 
 		'data': {
 			'start_x': float,
@@ -18,9 +20,22 @@ data = {
 			},
 		}
 	if 'answer':
+		'data': string,
+
+	if 'start':
 		'data': {
-			'author': string,
+			'secretWord': string,
+		},
+
+	if 'finish':
+		'data': string,
+
+	if 'drawer':
+		'data': {
+			'drawer': string,
 			'answer': string,
-		}
+			'winner': string,
+			'isWin': bool,
+		},
 
 }

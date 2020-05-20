@@ -8,6 +8,7 @@ from client.client import clientThread
 import sys
 import socket
 import cfg
+import re
 
 #Create application
 app = QtWidgets.QApplication(sys.argv)
@@ -76,8 +77,14 @@ class sceneDraw(QtWidgets.QGraphicsScene):
 		self.isPressedLeftMouse = False
 
 
-def pbClear_onClick():
+def pbClear_onClick(scene):
 	ui.gvBoard.scene().clear()
+	dataJSON = {
+		'success': True,
+		'request': 'clear',
+		'data': 'clear',
+	}
+	scene.sceneClient.sendAnotherData(dataJSON)
 
 def vsThickness_onValueChanged(scene, value):
 	eps = 0.00000001
@@ -172,7 +179,90 @@ def createExampleScene(scene, startValue, startColor):
 	scene.exampleScene = exampleScene
 	scene.examplePen = examplePen
 
+@QtCore.pyqtSlot(object)
+def clearScene(scene):
+	scene.clear()
+
+def pbSendNickname_onClick(scene):
+	nickname = ui.leNickname.text()
+	dataJSON = {
+		'success': True,
+		'request': 'nickname',
+		'data': nickname,
+	}
+	scene.sceneClient.sendAnotherData(dataJSON)
+	scene.sceneClient.nickname = nickname
+	ui.lbNickname.setText(nickname)
+	Form.hide()
+	Form.show()
+
+# СДЕЛАТЬ ЗАПУСК ИГРЫ!!!!
+def pbSendAnswer_onClick(scene):
+	text = ui.leAnswer.text()
+	text = re.sub(r'\s+', ' ', text)
+	text = text.strip()
+	if text == 'start':
+
+	dataJSON = {
+		'success': True,
+		'request': 'firstStart',
+		'data': nickname,
+	}
+	scene.sceneClient.sendAnotherData(dataJSON)
+	scene.sceneClient.nickname = nickname
+	ui.lbNickname.setText(nickname)
+
+@QtCore.pyqtSlot(int)
+def setAmountOfPlayers(amount):
+	ui.lbPlayers.setText(str(amount))
+
+@QtCore.pyqtSlot(dict)
+def recvStartHandler(data):
+	ui.lbSecretWord.setText("Секретное слово: " + data['secretWord'])
+	ui.gvBoard.setEnabled(True)
+	ui.pbClear.setEnabled(True)
+	ui.leAnswer.setEnabled(False)
+	ui.leSendAnswer.setEnabled(False)
+	Form.hide()
+	Form.show()
+
+	msgBox = QtWidgets.QMessageBox()
+	msgBox.setText("Вы - ведущий!")
+	msgBox.setInformativeText(
+		"Вы были выбраны случайным образом!\n" +
+		"Секретное слово: " + str(data['secretWord'])
+	)
+	msgBox.exec_()
+
+
+@QtCore.pyqtSlot()
+def recvFinishHandler():
+	ui.gvBoard.setEnabled(False)
+	ui.pbClear.setEnabled(False)
+	ui.lbSecretWord.clear()
+	ui.leAnswer.setEnabled(True)
+	ui.leSendAnswer.setEnabled(True)
+	Form.hide()
+	Form.show()
+
+@QtCore.pyqtSlot(dict)
+def recvDrawerHandler(data):
+	msgBox = QtWidgets.QMessageBox()
+	if data['isWin']:
+		msgBox.setText("Поздравляю! Вы отгадали слово!")
+	else:
+		msgBox.setText("Секретное слово было угадано.")
+
+	msgBox.setInformativeText(
+		"Победитель: " + str(dataJSON['winner']) +
+		"\nОтвет: " + str(dataJSON['answer']) + 
+		"\nСледующий ведущий: " + str(dataJSON['drawer'])
+	)
+	msgBox.exec_()
+
 def main():
+	ui.lbNickname.setText(socket.gethostname())
+	ui.leNickname.setText(socket.gethostname())
 	ui.vsThickness.setRange(0, 50)
 	ui.lbConnectionImage.setStyleSheet("color: rgb(255, 0, 0)")
 	ui.lbConnectionStatus.setText("Disconnected")
@@ -190,14 +280,23 @@ def main():
 	ui.pbGetColor.clicked.connect(lambda: getColor(scene))
 
 	ui.vsThickness.valueChanged.connect(lambda: vsThickness_onValueChanged(scene, ui.vsThickness.value()))
-	ui.pbClear.clicked.connect(pbClear_onClick)
+	ui.pbClear.clicked.connect(lambda: pbClear_onClick(scene))
+	ui.pbSendNickname.clicked.connect(lambda: pbSendNickname_onClick(scene))
+	ui.pbSendAnswer.clicked.connect(lambda: pbSendAnswer_onClick(scene))
 
 	client = clientThread(scene, ui.lbConnectionImage, ui.lbConnectionStatus, addr)
 	client.progressSignal.connect(drawLine)
 	client.connectionImageSignal.connect(changeConnectionStatus)
+	client.clearSignal.connect(clearScene)
+	client.amountOfPlayersSignal.connect(setAmountOfPlayers)
+	client.recvStartSignal.connect(recvStartHandler)
+	client.recvFinishSignal.connect(recvFinishHandler)
+	client.drawerSignal.connect(recvDrawerHandler)
 	scene.sceneClient = client
 	client.start()
 	client.wait(1)
+
+	pbSendNickname_onClick(scene)
 
 	sys.exit(app.exec_())
 
