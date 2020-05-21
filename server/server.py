@@ -60,14 +60,7 @@ def getNewSecretWord():
 	logger.info(msg)
 	print(msg)
 	return secretWord
-'''
-def getNewDrawer():
-	moveNum += 1
-	clientsAddr = clients.keys()
-	currDrawer = clientsAddr[moveNum % len(clients)]
-	secretWord = getNewSecretWord()
-	return currDrawer
-'''
+
 def sendCoords(binData, dataJSON, client_address, connAndThread):
 
 	connection = connAndThread['connection']
@@ -194,8 +187,8 @@ def startRecvRequests(connection, address):
 						sendCoordsToClients(binData, dataJSON, address)
 
 					elif dataJSON['request'] == 'firstStart':
-						currDrawer = address
-
+						if not currDrawer:
+							currDrawer = address
 
 			else:
 				connection.close()

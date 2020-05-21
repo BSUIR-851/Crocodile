@@ -107,7 +107,7 @@ class Ui_Form(object):
         self.lbSecretWord.setText("")
         self.lbSecretWord.setObjectName("lbSecretWord")
         self.pbStartGame = QtWidgets.QPushButton(Form)
-        self.pbStartGame.setGeometry(QtCore.QRect(320, 610, 191, 41))
+        self.pbStartGame.setGeometry(QtCore.QRect(320, 560, 191, 41))
         self.pbStartGame.setObjectName("pbStartGame")
 
         self.retranslateUi(Form)
