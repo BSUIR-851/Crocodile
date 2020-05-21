@@ -8,6 +8,9 @@ import sys
 import random
 import time
 
+#LOGGER
+logger = createLogger("server")
+
 #SERVER DATA
 host = ''
 port = 49100
@@ -21,36 +24,50 @@ currDrawer = ''
 words = getWords('words.txt')
 random.shuffle(words)
 secretWord = words[0]
+msg = '[{}] new secret word: {}'.format(datetime.datetime.now().time(), secretWord)
+logger.info(msg)
+print(msg)
 
-#LOGGER
-logger = createLogger("server")
+
+def delete(strAddress):
+	global currDrawer
+	msg = '[{}] {} disconnected'.format(datetime.datetime.now().time(), strAddress)
+	logger.info(msg)
+	print(msg)
+	clients[strAddress]['connection'].close()
+	del clients[strAddress]
+	if currDrawer == strAddress:
+		currDrawer = ''
 
 def deleteSelf(strAddress):
-	del clients[strAddress]
+	delete(strAddress)
 	sys.exit()
 
 def deleteClient(strAddress):
 	t = clients[strAddress]['thread']
-	del clients[strAddress]
+	delete(strAddress)
 	t.join(1)
 
 def deleteClients():
 	for client in toDelete:
 		deleteClient(client)
-	toDelete.clear()
 
 def getNewSecretWord():
+	global secretWord
 	random.shuffle(words)
 	secretWord = words[0]
+	msg = '[{}] new secret word: {}'.format(datetime.datetime.now().time(), secretWord)
+	logger.info(msg)
+	print(msg)
 	return secretWord
-
+'''
 def getNewDrawer():
 	moveNum += 1
 	clientsAddr = clients.keys()
 	currDrawer = clientsAddr[moveNum % len(clients)]
 	secretWord = getNewSecretWord()
 	return currDrawer
-
+'''
 def sendCoords(binData, dataJSON, client_address, connAndThread):
 
 	connection = connAndThread['connection']
@@ -79,10 +96,12 @@ def sendCoordsToClients(binData, dataJSON, address):
 
 	if toDelete:
 		deleteClients()
-
+		toDelete.clear()
 
 
 def startRecvRequests(connection, address):
+	global currDrawer
+	global secretWord
 	msg = '[{}] connected by {}'.format(datetime.datetime.now().time(), address)
 	logger.info(msg)
 	print(msg)
@@ -95,8 +114,22 @@ def startRecvRequests(connection, address):
 				binData = getBinaryJson(dataJSON)
 
 				if dataJSON['success']:
+					msg = '[{}] {} from {}: {}'.format(datetime.datetime.now().time(), dataJSON['request'], address, dataJSON['data'])
+					logger.debug(msg)
+					print(msg)
+
 					if dataJSON['request'] == 'check':
-						dataJSON['amount_of_connected'] = len(clients)
+						dataJSON['data'] = {}
+						dataJSON['data']['amount_of_connected'] = len(clients)
+						dataJSON['data']['isLive'] = bool(currDrawer)
+						if dataJSON['data']['isLive']:
+							dataJSON['data']['drawer'] = clients[currDrawer]['nickname']
+						else:
+							dataJSON['data']['drawer'] = ''
+
+						dataJSON['data']['isYouDrawer'] = address == currDrawer
+						dataJSON['data']['secretWord'] = secretWord
+
 						binData = getBinaryJson(dataJSON)
 						connection.sendall(binData)
 						msg = '[{}] {} to {} confirmed'.format(datetime.datetime.now().time(), dataJSON['request'], address)
@@ -104,21 +137,12 @@ def startRecvRequests(connection, address):
 						print(msg)
 
 					elif dataJSON['request'] == 'nickname':
-						msg = '[{}] from {}: {}'.format(datetime.datetime.now().time(), address, dataJSON['data'])
 						clients[address]['nickname'] = dataJSON['data']
-						logger.debug(msg)
-						print(msg)
 
 					elif dataJSON['request'] == 'answer':
-						if dataJSON['data'] == secretWord:
-							msg = '[{}] answer from {}: {}'.format(datetime.datetime.now().time(), address, dataJSON['data'])
-							logger.debug(msg)
-							print(msg)
-
-							answer = secretWord
-							winner = clients[address]['nickname']
+						if dataJSON['data'] == secretWord.upper():
+							# finish drawing after guessing word
 							oldDrawer = currDrawer
-
 							dataJSON = {
 								'success': True,
 								'request': 'finish',
@@ -130,23 +154,26 @@ def startRecvRequests(connection, address):
 							logger.debug(msg)
 							print(msg)
 
-							newDrawer = getNewDrawer()
-
 							time.sleep(2)
 
+							# notify all players about guessing word
+							currDrawer = address
+							answer = secretWord
+							winner = clients[address]['nickname']
 							dataJSON = {
 								'success': True,
 								'request': 'drawer',
 								'data': {
-									'drawer': clients[newDrawer]['nickname'],
+									'drawer': clients[address]['nickname'],
 									'answer': answer,
 									'winner': winner,
-									'isWin': False,
 								},
 							}
 							binData = getBinaryJson(dataJSON)
 							sendCoordsToClients(binData, dataJSON, address)
 
+							# send new secret word to new drawer
+							secretWord = getNewSecretWord()
 							dataJSON = {
 								'success': True,
 								'request': 'start',
@@ -155,45 +182,28 @@ def startRecvRequests(connection, address):
 								},
 							}
 							binData = getBinaryJson(dataJSON)
-							clients[newDrawer]['connection'].sendall(binData)
+							connection.sendall(binData)
 							msg = '[{}] to {}: {}'.format(datetime.datetime.now().time(), address, dataJSON['data'])
 							logger.debug(msg)
 							print(msg)
 
-							dataJSON['data']['isWin'] = True
-							binData = getBinaryJson(dataJSON)
-							connection.sendall(binData)
-							msg = '[{}] win to {}: {}'.format(datetime.datetime.now().time(), address, dataJSON['data'])
-							logger.debug(msg)
-							print(msg)
-
 					elif dataJSON['request'] == 'send':
-						msg = '[{}] from {}: {}'.format(datetime.datetime.now().time(), address, dataJSON['data'])
-						logger.debug(msg)
-						print(msg)
 						sendCoordsToClients(binData, dataJSON, address)
 
 					elif dataJSON['request'] == 'clear':
-						msg = '[{}] from {}: {}'.format(datetime.datetime.now().time(), address, dataJSON['data'])
-						logger.debug(msg)
-						print(msg)
 						sendCoordsToClients(binData, dataJSON, address)
 
 					elif dataJSON['request'] == 'firstStart':
-						msg = '[{}] from {}: {}'.format(datetime.datetime.now().time(), address, dataJSON['data'])
-						logger.debug(msg)
-						print(msg)
+						currDrawer = address
 
 
 			else:
-				msg = '[{}] {} disconnected'.format(datetime.datetime.now().time(), address)
-				logger.info(msg)
-				print(msg)
 				connection.close()
 				deleteSelf(address)
 
-		except (socket.timeout, TimeoutError, ConnectionRefusedError) as e:
-			pass
+		except (ConnectionResetError, socket.timeout, TimeoutError, ConnectionRefusedError) as e:
+			connection.close()
+			deleteSelf(address)
 				
 
 def main():
@@ -222,7 +232,6 @@ def main():
 
 if __name__ == '__main__':
 	main()
-
 
 
 

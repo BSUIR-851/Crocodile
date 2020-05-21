@@ -185,52 +185,74 @@ def clearScene(scene):
 
 def pbSendNickname_onClick(scene):
 	nickname = ui.leNickname.text()
-	dataJSON = {
-		'success': True,
-		'request': 'nickname',
-		'data': nickname,
-	}
-	scene.sceneClient.sendAnotherData(dataJSON)
-	scene.sceneClient.nickname = nickname
-	ui.lbNickname.setText(nickname)
-	Form.hide()
-	Form.show()
+	nickname = re.sub(r'\s+', ' ', nickname)
+	nickname = nickname.strip()
 
-# СДЕЛАТЬ ЗАПУСК ИГРЫ!!!!
+	if nickname:
+		dataJSON = {
+			'success': True,
+			'request': 'nickname',
+			'data': nickname,
+		}
+		scene.sceneClient.sendAnotherData(dataJSON)
+		scene.sceneClient.nickname = nickname
+		ui.lbNickname.setText(nickname)
+		Form.hide()
+		Form.show()
+
+	else:
+		msgBox = QtWidgets.QMessageBox()
+		msgBox.setText("Ошибка!")
+		msgBox.setInformativeText(
+			"Некорректный никнейм!"
+		)
+		msgBox.exec_()
+
 def pbSendAnswer_onClick(scene):
-	text = ui.leAnswer.text()
+	text = ui.leSendAnswer.text()
 	text = re.sub(r'\s+', ' ', text)
 	text = text.strip()
-	if text == 'start':
+	text = text.upper()
 
 	dataJSON = {
 		'success': True,
-		'request': 'firstStart',
-		'data': nickname,
+		'request': 'answer',
+		'data': text,
 	}
 	scene.sceneClient.sendAnotherData(dataJSON)
-	scene.sceneClient.nickname = nickname
-	ui.lbNickname.setText(nickname)
 
 @QtCore.pyqtSlot(int)
 def setAmountOfPlayers(amount):
 	ui.lbPlayers.setText(str(amount))
 
 @QtCore.pyqtSlot(dict)
+def isLiveHandler(data):
+	ui.pbStartGame.setVisible(not data['isLive'])
+	ui.lbDrawer.setText(data['drawer'])
+	ui.leSendAnswer.setEnabled(not data['isYouDrawer'])
+	ui.pbSendAnswer.setEnabled(not data['isYouDrawer'])
+	ui.gvBoard.setEnabled(data['isYouDrawer'])
+	ui.pbClear.setEnabled(data['isYouDrawer'])
+	if data['isYouDrawer']:
+		ui.lbSecretWord.setText("Секретное слово: " + data['secretWord'])
+	else:
+		ui.lbSecretWord.clear()
+
+@QtCore.pyqtSlot(dict)
 def recvStartHandler(data):
 	ui.lbSecretWord.setText("Секретное слово: " + data['secretWord'])
 	ui.gvBoard.setEnabled(True)
 	ui.pbClear.setEnabled(True)
-	ui.leAnswer.setEnabled(False)
 	ui.leSendAnswer.setEnabled(False)
+	ui.pbSendAnswer.setEnabled(False)
 	Form.hide()
 	Form.show()
 
 	msgBox = QtWidgets.QMessageBox()
-	msgBox.setText("Вы - ведущий!")
+	msgBox.setText("Поздравляю! Вы - ведущий!")
 	msgBox.setInformativeText(
-		"Вы были выбраны случайным образом!\n" +
-		"Секретное слово: " + str(data['secretWord'])
+		"Вы угадали слово!\n"
+		"Следующее секретное слово: " + str(data['secretWord']) + "\n"
 	)
 	msgBox.exec_()
 
@@ -240,27 +262,31 @@ def recvFinishHandler():
 	ui.gvBoard.setEnabled(False)
 	ui.pbClear.setEnabled(False)
 	ui.lbSecretWord.clear()
-	ui.leAnswer.setEnabled(True)
-	ui.leSendAnswer.setEnabled(True)
 	Form.hide()
 	Form.show()
 
 @QtCore.pyqtSlot(dict)
 def recvDrawerHandler(data):
 	msgBox = QtWidgets.QMessageBox()
-	if data['isWin']:
-		msgBox.setText("Поздравляю! Вы отгадали слово!")
-	else:
-		msgBox.setText("Секретное слово было угадано.")
-
+	msgBox.setText("Секретное слово было угадано.")
 	msgBox.setInformativeText(
-		"Победитель: " + str(dataJSON['winner']) +
-		"\nОтвет: " + str(dataJSON['answer']) + 
-		"\nСледующий ведущий: " + str(dataJSON['drawer'])
+		"Победитель: " + str(data['winner']) + "\n"
+		"Ответ: " + str(data['answer']) + "\n"
+		"Следующий ведущий: " + str(data['drawer']) + "\n"
 	)
 	msgBox.exec_()
 
+def pbStartGame_onClick(scene):
+	dataJSON = {
+		'success': True,
+		'request': 'firstStart',
+		'data': 'firstStart',
+	}
+
+	scene.sceneClient.sendAnotherData(dataJSON)
+
 def main():
+	ui.pbStartGame.setVisible(False)
 	ui.lbNickname.setText(socket.gethostname())
 	ui.leNickname.setText(socket.gethostname())
 	ui.vsThickness.setRange(0, 50)
@@ -283,6 +309,7 @@ def main():
 	ui.pbClear.clicked.connect(lambda: pbClear_onClick(scene))
 	ui.pbSendNickname.clicked.connect(lambda: pbSendNickname_onClick(scene))
 	ui.pbSendAnswer.clicked.connect(lambda: pbSendAnswer_onClick(scene))
+	ui.pbStartGame.clicked.connect(lambda: pbStartGame_onClick(scene))
 
 	client = clientThread(scene, ui.lbConnectionImage, ui.lbConnectionStatus, addr)
 	client.progressSignal.connect(drawLine)
@@ -292,6 +319,7 @@ def main():
 	client.recvStartSignal.connect(recvStartHandler)
 	client.recvFinishSignal.connect(recvFinishHandler)
 	client.drawerSignal.connect(recvDrawerHandler)
+	client.isLiveSignal.connect(isLiveHandler)
 	scene.sceneClient = client
 	client.start()
 	client.wait(1)

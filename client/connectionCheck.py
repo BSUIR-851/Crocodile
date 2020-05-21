@@ -19,6 +19,7 @@ class checkConnectionThread(QThread):
 		dataJSON = {
 			'success': True,
 			'request': 'check',
+			'data': 'check',
 		}
 
 		binData = getBinaryJson(dataJSON)

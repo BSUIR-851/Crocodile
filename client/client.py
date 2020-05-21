@@ -16,6 +16,7 @@ class clientThread(QThread):
 	recvStartSignal = QtCore.pyqtSignal(dict)
 	recvFinishSignal = QtCore.pyqtSignal()
 	drawerSignal = QtCore.pyqtSignal(dict)
+	isLiveSignal = QtCore.pyqtSignal(dict)
 
 	nickname = ''
 	isStart = False
@@ -64,7 +65,7 @@ class clientThread(QThread):
 	def startRecvData(self):
 		try:
 			self.clientSocket.connect(self.servAddr)
-			self.clientSocket.settimeout(5)
+			self.clientSocket.settimeout(30)
 		except (OSError, socket.timeout, TimeoutError, ConnectionRefusedError) as e:
 			self.resetConnection()
 
@@ -80,7 +81,8 @@ class clientThread(QThread):
 					if dataJSON['success']:
 						if dataJSON['request'] == 'check':
 							self.connectionImageSignal.emit(self.connectionImage, self.connectionText, True)
-							self.amountOfPlayersSignal.emit(dataJSON['amount_of_connected'])
+							self.amountOfPlayersSignal.emit(dataJSON['data']['amount_of_connected'])
+							self.isLiveSignal.emit(dataJSON['data'])
 							msg = '[{}] {} to {} confirmed'.format(datetime.datetime.now().time(), dataJSON['request'], self.servAddr)
 
 						elif dataJSON['request'] == 'send':
@@ -109,6 +111,8 @@ class clientThread(QThread):
 					self.resetConnection()
 
 			except (OSError, socket.timeout, TimeoutError, ConnectionRefusedError) as e:
+				print("hello mazafaka\n")
+				print(e)
 				self.resetConnection()
 
 	@QtCore.pyqtSlot(bool)

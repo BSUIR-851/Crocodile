@@ -3,8 +3,20 @@ n+1 - ...: data
 data = {
 	'success': boolean,
 	'request': 1 of ['send', 'check', 'nickname', 'clear', 'answer', 'drawer', 'finish', 'start'],
-	if 'check':
-		'amount_of_connected': int,
+
+	from server: if 'check':
+		'data': {
+			'amount_of_connected': int,
+			'isLive': bool,
+			'drawer': string,
+			'isYouDrawer': bool,
+		},
+	from client: if 'check':  
+		'data': 'check',
+
+	if 'clear':
+		'data': string,
+
 	if 'send': 
 		'data': {
 			'start_x': float,
@@ -35,7 +47,6 @@ data = {
 			'drawer': string,
 			'answer': string,
 			'winner': string,
-			'isWin': bool,
 		},
 
 }
