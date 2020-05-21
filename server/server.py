@@ -7,14 +7,16 @@ import threading
 import sys
 import random
 import time
+import cfg
 
 #LOGGER
 logger = createLogger("server")
 
 #SERVER DATA
 host = ''
-port = 49100
+_, port = cfg.getValues('addr.conf', ['address'], ['host', 'port'])
 addr = (host, port)
+
 clients = {}
 toDelete = []
 

@@ -229,14 +229,15 @@ def setAmountOfPlayers(amount):
 def isLiveHandler(data):
 	ui.pbStartGame.setVisible(not data['isLive'])
 	ui.lbDrawer.setText(data['drawer'])
-	ui.leSendAnswer.setEnabled(not data['isYouDrawer'])
-	ui.pbSendAnswer.setEnabled(not data['isYouDrawer'])
+	ui.leSendAnswer.setEnabled((not data['isYouDrawer']) and (data['isLive']))
+	ui.pbSendAnswer.setEnabled((not data['isYouDrawer']) and (data['isLive']))
 	ui.gvBoard.setEnabled(data['isYouDrawer'])
 	ui.pbClear.setEnabled(data['isYouDrawer'])
 	if data['isYouDrawer']:
 		ui.lbSecretWord.setText("Секретное слово: " + data['secretWord'])
 	else:
 		ui.lbSecretWord.clear()
+
 
 @QtCore.pyqtSlot(dict)
 def recvStartHandler(data):
