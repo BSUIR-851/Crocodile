@@ -63,9 +63,9 @@ def getNewSecretWord():
 	print(msg)
 	return secretWord
 
-def sendCoords(binData, dataJSON, client_address, connAndThread):
+def sendCoords(binData, dataJSON, client_address):
 
-	connection = connAndThread['connection']
+	connection = clients[client_address]['connection']
 
 	try:
 		connection.sendall(binData)
@@ -85,9 +85,9 @@ def sendCoords(binData, dataJSON, client_address, connAndThread):
 
 
 def sendCoordsToClients(binData, dataJSON, address):
-	for client_address, connAndThread in clients.items():
+	for client_address in clients:
 		if client_address != address:
-			sendCoords(binData, dataJSON, client_address, connAndThread)
+			sendCoords(binData, dataJSON, client_address)
 
 	if toDelete:
 		deleteClients()
@@ -204,6 +204,7 @@ def startRecvRequests(connection, address):
 def main():
 	serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	serverSocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 	serverSocket.bind(addr)
 	serverSocket.listen()
 	msg = '[{}] ready'.format(datetime.datetime.now().time())

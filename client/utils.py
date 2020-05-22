@@ -27,6 +27,7 @@ def read(sock):
 	
 	while len(binData) != length:
 		data = sock.recv(1024)
+		
 		if not data:
 			break
 

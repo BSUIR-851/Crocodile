@@ -27,6 +27,7 @@ class clientThread(QThread):
 
 		self.servAddr = servAddr
 		self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.clientSocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
 		self.connectionImage = connectionImage
 		self.connectionText = connectionText
@@ -44,6 +45,8 @@ class clientThread(QThread):
 		while True:
 			try:
 				self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.clientSocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+				
 				self.clientSocket.connect(self.servAddr)
 				self.checkConnection.clientSocket = self.clientSocket
 				self.connectionImageSignal.emit(self.connectionImage, self.connectionText, True)
@@ -51,7 +54,7 @@ class clientThread(QThread):
 			except OSError:
 				continue
 
-		self.clientSocket.settimeout(5)
+		self.clientSocket.settimeout(30)
 
 		dataJSON = {
 			'success': True,
@@ -66,6 +69,7 @@ class clientThread(QThread):
 		try:
 			self.clientSocket.connect(self.servAddr)
 			self.clientSocket.settimeout(30)
+
 		except (OSError, socket.timeout, TimeoutError, ConnectionRefusedError) as e:
 			self.resetConnection()
 
@@ -111,8 +115,6 @@ class clientThread(QThread):
 					self.resetConnection()
 
 			except (OSError, socket.timeout, TimeoutError, ConnectionRefusedError) as e:
-				print("hello mazafaka\n")
-				print(e)
 				self.resetConnection()
 
 	@QtCore.pyqtSlot(bool)
