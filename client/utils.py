@@ -23,23 +23,22 @@ def getJson(binData):
 def read(sock):
 	binData = b''
 	dataLen = 0
-	length = -1
+	lenOfLen = 0
+	binLength = b''
 	
-	while len(binData) != length:
-		data = sock.recv(1024)
-		
-		if not data:
+	while lenOfLen != 16:
+		binLength += sock.recv(16)
+		lenOfLen += len(binLength)
+		if not binLength:
 			break
 
-		if dataLen == 0:
-			length = data[0:16]
-			data = data[16:]
-			dataLen = int.from_bytes(length, byteorder='big')
-			length = dataLen
+	length = int.from_bytes(binLength, byteorder='big')
 
-		binData += data
-		currLen = len(data)
-		dataLen -= currLen
-
+	while dataLen != length:
+		binData += sock.recv(length - dataLen)
+		dataLen += len(binData)
+		if not binData:
+			break
+	
 	return binData
 
