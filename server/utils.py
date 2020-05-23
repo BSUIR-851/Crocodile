@@ -42,3 +42,17 @@ def read(sock):
 	
 	return binData
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
