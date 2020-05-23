@@ -27,7 +27,7 @@ def read(sock):
 	binLength = b''
 	
 	while lenOfLen != 16:
-		binLength += sock.recv(16)
+		binLength += sock.recv(16 - lenOfLen)
 		lenOfLen += len(binLength)
 		if not binLength:
 			break
@@ -41,4 +41,43 @@ def read(sock):
 			break
 	
 	return binData
+
+def readff(sock):
+	SIZE_LEN = 16
+	binData = b''
+	dataLen = 0
+	lenOfLen = 0
+	binLength = b''
+	
+	while lenOfLen != SIZE_LEN:
+		tempLen = SIZE_LEN - lenOfLen
+		binLength += sock.recv(tempLen)
+		lenOfLen += len(binLength)
+		if not binLength:
+			break
+
+	length = int.from_bytes(binLength, byteorder='big')
+
+	while dataLen != length:
+		tempLen = length - dataLen
+		binData += sock.recv(tempLen)
+		dataLen += len(binData)
+		if not binData:
+			break
+	
+	return binData
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

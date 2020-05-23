@@ -27,7 +27,7 @@ def read(sock):
 	binLength = b''
 	
 	while lenOfLen != 16:
-		binLength += sock.recv(16)
+		binLength += sock.recv(16 - lenOfLen)
 		lenOfLen += len(binLength)
 		if not binLength:
 			break
