@@ -9,6 +9,7 @@ import sys
 import socket
 import cfg
 import re
+import time
 
 #Create application
 app = QtWidgets.QApplication(sys.argv)
@@ -325,6 +326,7 @@ def main():
 	client.start()
 	client.wait(1)
 
+	time.sleep(2)
 	pbSendNickname_onClick(scene)
 
 	sys.exit(app.exec_())

@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Drawing machine</string>
+   <string>Crocodile</string>
   </property>
   <widget class="QGraphicsView" name="gvBoard">
    <property name="enabled">

@@ -100,7 +100,7 @@ def startRecvRequests(connection, address):
 	msg = '[{}] connected by {}'.format(datetime.datetime.now().time(), address)
 	logger.info(msg)
 	print(msg)
-
+	connection.settimeout(10)
 	while True:
 		try:
 			binData = read(connection)
@@ -118,7 +118,7 @@ def startRecvRequests(connection, address):
 						dataJSON['data']['amount_of_connected'] = len(clients)
 						dataJSON['data']['isLive'] = bool(currDrawer)
 						if dataJSON['data']['isLive']:
-							dataJSON['data']['drawer'] = clients[currDrawer]['nickname']
+							dataJSON['data']['drawer'] = str(clients[currDrawer].get('nickname'))
 						else:
 							dataJSON['data']['drawer'] = ''
 
@@ -154,12 +154,12 @@ def startRecvRequests(connection, address):
 							# notify all players about guessing word
 							currDrawer = address
 							answer = secretWord
-							winner = clients[address]['nickname']
+							winner = str(clients[address].get('nickname'))
 							dataJSON = {
 								'success': True,
 								'request': 'drawer',
 								'data': {
-									'drawer': clients[address]['nickname'],
+									'drawer': str(clients[address].get('nickname')),
 									'answer': answer,
 									'winner': winner,
 								},
@@ -219,6 +219,7 @@ def main():
 			clients[strAddress] = {}
 			clients[strAddress]['connection'] = connection
 			clients[strAddress]['thread'] = t
+			clients[strAddress]['nickname'] = ''
 			t.start()
 
 	for thread in clients.values():

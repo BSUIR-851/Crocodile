@@ -115,7 +115,7 @@ class Ui_Form(object):
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Drawing machine"))
+        Form.setWindowTitle(_translate("Form", "Crocodile"))
         self.pbClear.setText(_translate("Form", "Clear"))
         self.lbConnectionImage.setText(_translate("Form", "⚫"))
         self.lbConnectionStatus.setText(_translate("Form", "Not connected"))

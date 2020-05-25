@@ -168,6 +168,7 @@ class clientThread(QThread):
 			self.resetConnection()
 
 		except Exception as e:
+			print("ffF")
 			msg = '[{}] {}'.format(datetime.datetime.now().time(), e)
 			self.logger.error(msg)
 			print(msg)
